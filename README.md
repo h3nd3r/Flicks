@@ -18,7 +18,6 @@ The following **required** functionality is complete:
 
 The following **optional** features are implemented:
 * [X] Add a tab bar for Now Playing or Top Rated movies.
-* [X] Infinite scroll
 
 The following **additional** features are implemented:
 * [X] Infinite scroll
