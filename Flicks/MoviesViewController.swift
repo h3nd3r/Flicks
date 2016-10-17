@@ -11,7 +11,6 @@ import AFNetworking
 
 class MoviesViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UIScrollViewDelegate {
     @IBOutlet weak var errorView: UIView!
-
     @IBOutlet weak var tableView: UITableView!
     var movies: [NSDictionary] = []
     var endpoint: String = "now_playing"
@@ -19,6 +18,7 @@ class MoviesViewController: UIViewController, UITableViewDataSource, UITableView
     var currentPage: Int = 1
     var isMoreDataLoading = false
     var loadingMoreView: InfiniteScrollActivityView?
+    var refreshControl: UIRefreshControl!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -33,14 +33,14 @@ class MoviesViewController: UIViewController, UITableViewDataSource, UITableView
         insets.bottom += InfiniteScrollActivityView.defaultHeight;
         tableView.contentInset = insets
         
-        let refreshControl = UIRefreshControl()
-        refreshControl.addTarget(self, action: #selector(refreshControlAction(refreshControl: )), for: UIControlEvents.valueChanged)
-        tableView.insertSubview(refreshControl, at: 0)
+        refreshControl = UIRefreshControl()
+        refreshControl?.addTarget(self, action: #selector(refreshControlAction(refreshControl: )), for: UIControlEvents.valueChanged)
+        tableView.insertSubview(refreshControl!, at: 0)
         
         tableView.dataSource = self
         tableView.delegate = self
         
-        loadData(false)
+        loadData(false, refresh: false)
     }
     
     override func didReceiveMemoryWarning() {
@@ -66,7 +66,7 @@ class MoviesViewController: UIViewController, UITableViewDataSource, UITableView
                 loadingMoreView!.startAnimating()
                 
                 // Code to load more results
-                loadData(true)
+                loadData(true, refresh: false)
             }
         }
     }
@@ -104,11 +104,15 @@ class MoviesViewController: UIViewController, UITableViewDataSource, UITableView
     // Hides the RefreshControl
     func refreshControlAction(refreshControl: UIRefreshControl) {
         print("Refresh, calling loadData")
-        loadData(false)
+        loadData(false, refresh: true)
     }
 
-    func loadData(_ more: Bool) {
-        print("loadData for page \(currentPage), total pages \(totalPages)")
+    func loadData(_ more: Bool, refresh: Bool) {
+
+        if refresh {
+            currentPage = 1
+        }
+        print("loadData for page \(currentPage), total pages \(totalPages)")        
         if self.currentPage < self.totalPages {
         
             if !more {
@@ -130,8 +134,11 @@ class MoviesViewController: UIViewController, UITableViewDataSource, UITableView
                                                         if let data = dataOrNil {
                                                             if let responseDictionary = try! JSONSerialization.jsonObject(with: data, options:[]) as? [String:AnyObject] {
                                                                 self.totalPages = responseDictionary["total_pages"] as! Int
-                                                                // TODO: append in instead here
-                                                                self.movies += responseDictionary["results"] as! [NSDictionary]
+                                                                if refresh {
+                                                                    self.movies = responseDictionary["results"] as! [NSDictionary]
+                                                                } else {
+                                                                    self.movies += responseDictionary["results"] as! [NSDictionary]
+                                                                }
                                                                 
                                                                 self.errorView.isHidden = true
                                                                 self.tableView.reloadData()
@@ -145,6 +152,9 @@ class MoviesViewController: UIViewController, UITableViewDataSource, UITableView
                                                                     
                                                                     // Stop the loading indicator
                                                                     self.loadingMoreView!.stopAnimating()
+                                                                }
+                                                                else if refresh {
+                                                                    self.refreshControl?.endRefreshing()
                                                                 }
                                                             }
                                                         } else {
